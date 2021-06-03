@@ -1,0 +1,177 @@
+---
+title: "visualizations"
+author: "Daphne Chen"
+date: "5/1/2021"
+output: pdf_document
+---
+
+```{r, warning=F, message=F}
+library(tidyverse)
+library(ggplot2)
+```
+
+```{r, message=F, warning=F}
+closure <- read_csv("closure.csv")
+closure <- closure[-(219:228),]
+closure$`Income Group` <- factor(closure$`Income Group`, levels = c("High income", "Upper middle income", "Lower middle income", "Low income"))
+closure$Online <- factor(closure$Online)
+dates <- read_csv("Dates.csv")
+reopening <- read_csv("reopening.csv")
+cases <- read_csv("owid-covid-data.csv")
+cases <- cases[, -c(17:44, 52:59)]
+```
+
+```{r}
+summaries <- closure %>%
+  group_by(`Income Group`) %>%
+  summarize(case_mean = mean(`Number of confirmed cases at time of closure`, na.rm=T), weeks_closed = mean(`Total Weeks closed`, na.rm=T), reopening_case = mean(`Number of cases at re-opening`, na.rm=T), online = sum(Online == "Yes", na.rm=T))
+
+summaries
+```
+```{r}
+closure$`Existing Cash Transfer Supplemented?`[is.na(closure$`Existing Cash Transfer Supplemented?`)] <- "No"
+closure$`Plans for Special Education? (Y/N)`[is.na(closure$`Plans for Special Education? (Y/N)`)] <- "No"
+```
+
+```{r}
+closure %>%
+  group_by(`Existing Cash Transfer Supplemented?`) %>%
+  summarize(Online = mean(Online =="Yes", na.rm=T), `Not Online` = mean(Online=="No", na.rm=T))
+```
+
+
+```{r}
+a <- closure %>% 
+  ggplot(aes(`Existing Cash Transfer Supplemented?`, `Total Weeks closed`, color = `Existing Cash Transfer Supplemented?`)) +
+  geom_point() +
+  #geom_smooth(method="lm", aes(color="Lm")) + 
+  stat_summary(fun=mean, geom="line", aes(group = 1, color = "Mean")) +
+  scale_color_manual(values=c("#E49444", "#D1615D", "#85B6B2")) +
+  theme_minimal() +
+  labs(title = "The Mean of Countries with Funds Supplemented and Countries without", color = NULL)
+
+closure %>% 
+  group_by(`Existing Cash Transfer Supplemented?`) %>%
+  filter(!is.na(`Online`)) %>%
+  count(Online) %>%
+  mutate(Proportion = n) %>% 
+  ggplot(aes(`Existing Cash Transfer Supplemented?`, Proportion, fill=Online)) +
+  scale_fill_manual(values = c("#D1615D", "#85B6B2")) +
+  geom_col(position='fill') +
+  scale_y_continuous(labels = scales::percent) +
+  theme_minimal() +
+  #geom_label(aes(label = percent(percent)), position = "fill", color = "white", vjust = 1, show.legend = FALSE) +
+  #scale_y_continuous(labels = count) +
+  #geom_smooth(method="lm", aes(color="Lm")) + 
+  #stat_summary(fun=mean, geom="line", aes(group = 1, color = "Mean")) +
+  #scale_colour_manual(values = c("red", "blue")) +
+  labs(title = "Percentage of Countries that Transitioned Online and Whether They Received Supplemental Funds", color = NULL)
+
+closure %>% 
+  group_by(`Plans for Special Education? (Y/N)`) %>%
+  filter(!is.na(`Online`)) %>%
+  count(Online) %>%
+  mutate(Proportion = n) %>% 
+  ggplot(aes(`Plans for Special Education? (Y/N)`, Proportion, fill=Online)) +
+  scale_fill_manual(values = c("#D1615D", "#85B6B2")) +
+  scale_y_continuous(labels = scales::percent) +
+  geom_col(position='fill') +
+  theme_minimal() +
+  #geom_label(aes(label = percent(percent)), position = "fill", color = "white", vjust = 1, show.legend = FALSE) +
+  #scale_y_continuous(labels = count) +
+  #geom_smooth(method="lm", aes(color="Lm")) + 
+  #stat_summary(fun=mean, geom="line", aes(group = 1, color = "Mean")) +
+  #scale_colour_manual(values = c("red", "blue")) +
+  labs(title = "Plans for Special Education? vs. Number of Countries Offering Online", color = NULL)
+
+reopening %>%
+  group_by(`Unions involved in reopening? (Y/N)`) %>%
+  count(`Closure extended?`) %>%
+  mutate(Proportion = n) %>% 
+  ggplot(aes(`Unions involved in reopening? (Y/N)`, Proportion, fill=`Closure extended?`)) +
+  scale_fill_manual(values = c("#D1615D", "#85B6B2")) +
+  scale_y_continuous(labels = scales::percent) +
+  geom_col(position='fill') +
+  theme_minimal() +
+  labs(title= "Union Involvement vs. Closure Extended?")
+```
+
+```{r}
+
+reopening$`Unions involved in reopening? (Y/N)`[is.na(reopening$`Unions involved in reopening? (Y/N)`)] <- "No"
+reopening$`Closure extended?`[is.na(reopening$`Closure extended?`)] <- "No"
+
+reopening %>% 
+  #group_by(`Unions involved in reopening? (Y/N)`) %>%
+  ggplot(aes(`Unions involved in reopening? (Y/N)`, `Total Weeks closed`, col=`Unions involved in reopening? (Y/N)`)) +
+  geom_point() +
+  scale_color_manual(values=c("#E49444", "#D1615D", "#85B6B2")) +
+  #geom_label(aes(label = percent(percent)), position = "fill", color = "white", vjust = 1, show.legend = FALSE) +
+  #scale_y_continuous(labels = count) +
+  #geom_smooth(method="lm", aes(color="Lm")) + 
+  stat_summary(fun=mean, geom="line", aes(group = 1, color = "Mean")) +
+  theme_minimal() +
+  #scale_colour_manual(values = c("red", "blue")) +
+  labs(title = "Is there correlation between union involvement and total weeks closed?", color = NULL)
+
+
+reopening$`Reopening includes multiple modalities? (i.e., online and in-person) Y/N`[is.na(reopening$`Reopening includes multiple modalities? (i.e., online and in-person) Y/N`)] <- "No"
+reopening %>% 
+  #group_by(`Unions involved in reopening? (Y/N)`) %>%
+  ggplot(aes(`Reopening includes multiple modalities? (i.e., online and in-person) Y/N`, `Total Weeks closed`, fill=`Unions involved in reopening? (Y/N)`)) +
+  geom_point() +
+  theme_minimal() +
+  #geom_label(aes(label = percent(percent)), position = "fill", color = "white", vjust = 1, show.legend = FALSE) +
+  #scale_y_continuous(labels = count) +
+  #geom_smooth(method="lm", aes(color="Lm")) + 
+  stat_summary(fun=mean, geom="line", aes(group = 1, color = "Mean")) +
+  #scale_colour_manual(values = c("red", "blue")) +
+  labs(title = "Multple Modalities vs. Total Weeks Closed", color = NULL)
+```
+
+
+```{r}
+closure %>% 
+  group_by(`Existing Cash Transfer Supplemented?`) %>%
+  summarize(mean = mean(`Total Weeks closed`, na.rm=T))
+
+reopenY <- reopening %>%
+  filter(`Unions involved in reopening? (Y/N)`=='Yes')
+reopenN <- reopening %>%
+  filter(`Unions involved in reopening? (Y/N)`=='No')
+t.test(reopenY$`Total Weeks closed`, reopenN$`Total Weeks closed`, alternative="less", conf.level=0.9)
+#plot(closeDurVSunions)
+
+closure1 <- closure
+closure1$Online <- as.numeric(closure1$Online)
+incomeVSonline<- lm(`Online`~`Income Group`, data=closure1)
+summary(incomeVSonline)
+#plot(incomeVSonline)
+
+closure$`Sending work home with students / providing hardcopies of materials`[is.na(closure$`Sending work home with students / providing hardcopies of materials`)] <- "No"
+
+
+closeDurVSprovisions <- lm(`Total Weeks closed`~`Sending work home with students / providing hardcopies of materials`, data=closure)
+summary(closeDurVSprovisions)
+#plot(closeDurVSprovisions)
+
+closeDurVScash <- lm(`Total Weeks closed`~`Existing Cash Transfer Supplemented?`, data=closure)
+summary(closeDurVScash)
+#plot(closeDurVScash)
+```
+
+
+```{r}
+reopening1 <- reopening %>%
+  inner_join(closure, by="Country")
+reopening1$`Income Group.x` <- factor(reopening1$`Income Group.x`)
+reopening1$`Existing Cash Transfer Supplemented?` <- factor(reopening1$`Existing Cash Transfer Supplemented?`)
+reopening1$`Unions involved in reopening? (Y/N)` <- factor(reopening1$`Unions involved in reopening? (Y/N)`)
+mfull <- lm(`Total Weeks closed.x`~`Income Group.x`+`Unions involved in reopening? (Y/N)`+`Existing Cash Transfer Supplemented?`, data=reopening1)
+mreduced <- lm(`Total Weeks closed.x`~`Income Group.x`+`Unions involved in reopening? (Y/N)`, data=reopening1)
+anova(mreduced, mfull)
+anova(mfull)
+anova(mreduced)
+summary(mfull)
+summary(mreduced)
+```
