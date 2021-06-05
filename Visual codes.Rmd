@@ -1,0 +1,61 @@
+---
+title: "datares_graphics"
+author: "Tianlang Ouyang"
+date: "5/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+setwd("~/Desktop/DataRes")
+
+closure <- read_csv("closure.csv")
+
+df <- closure %>% select(2, 33)
+
+df_clean <- na.omit(df)
+
+write_csv(df_clean, "Map data")
+
+table(df_clean$`National exams impact (went ahead/ cancelled/postponed/ Planned for 2020/ held in new format/ by prior assessment)`)
+
+trial <- filter(df_clean, `National exams impact (went ahead/ cancelled/postponed/ Planned for 2020/ held in new format/ by prior assessment)` == "Went ahead")
+print(table(df_clean$`National exams impact (went ahead/ cancelled/postponed/ Planned for 2020/ held in new format/ by prior assessment)`))
+
+measure <- c("Cancelled", "Held in new format", "Planned for 2020", "Postponed",
+             "Results allocated by teachers or prior assessment", "Went ahead")
+freq <- c(14, 18, 26, 50, 8, 15)
+
+naexam <- data.frame(measure, freq)
+ # scale_color_manual(values=c("#999999", "orange", "red", "cyan", "green", "yellow"))+
+
+naexam_plot <- ggplot(data=naexam, aes(x=measure, y = freq , fill = measure)) +
+  geom_bar(stat="identity", width = 0.5) +
+  scale_fill_manual(values=c("#5778a4", "#e49444", "#d1615d","#85b6b2","#6a9f58","#e7ca60"))+
+  xlab("Impact On National Exam") + ylab("Number Of Countries/Regions")+
+  geom_text(aes(label= freq ), vjust= -0.3, size = 3.5)+
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
+  ggtitle("Measure Taken By Countries/Regions With National Examinations") +
+  theme_minimal()
+
+naexam_plot
+
+#green: #6a9f58,
+ # yellow: #e7ca60,
+ # purple: #a87c9f,
+
+#naexam_plot + scale_fill_manual(values=c("#17becf", "#bcbd22", "#7f7f7f","#e377c2","#8c564b","#9467bd","#d62728"))
+naexam_plot
+ggsave("nationalbar.png", plot = naexam_plot , width = 10)
+
+```
+
+
+
