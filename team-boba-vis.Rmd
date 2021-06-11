@@ -1,0 +1,183 @@
+---
+title: "team boba vis"
+author: "Yixin Chen"
+date: "5/21/2021"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+library(DescTools)
+
+closure <- read_csv("closure.csv")
+closure
+Date <- read_csv("Dates.csv")
+Date
+```
+
+combine two datasets
+```{r}
+closure$`Income Group` <- factor(closure$`Income Group`, level = c("Low income", 
+                                                                     "Lower middle income",
+                                                                     "Upper middle income",
+                                                                     "High income"))
+data <- closure %>% inner_join(Date, by="Country")
+data
+```
+
+Density Plot
+```{r}
+#clean NA values
+data2 <- data %>% select("Total weeks FULLY CLOSED (excluding academic breaks)", "Income Group")
+data2 <- data2 %>% na.exclude()
+
+#create plot
+p <-
+  ggplot(data2,
+         aes(`Total weeks FULLY CLOSED (excluding academic breaks)`,
+             fill = `Income Group`)) +
+  geom_density(alpha = 0.4) +
+  ggtitle("School Closure Time for Countries with Different Income Levels") +
+  labs(fill = "Income Levels") +
+  scale_fill_manual(values = c("#5778A4", "#D1615D", "#6A9F58", "#E7CA60")) +
+  theme_minimal() + theme(legend.title = element_blank())
+p <- ggplotly(p)
+p
+```
+
+Bar Plot
+```{r}
+closure1 <- closure %>% filter(`Income Group`=="Low income"&
+                                 `Reopening process started
+(Y/N/School year ended/Never closed)` != "Never closed") 
+mean(closure1$Online=="Yes" , na.rm = TRUE)
+mean(closure1$Radio=="Yes" , na.rm = TRUE)
+mean(closure1$TV=="Yes" , na.rm = TRUE)
+
+
+closure2 <- closure %>% filter(`Income Group`=="High income"&
+                                 `Reopening process started
+(Y/N/School year ended/Never closed)` != "Never closed") 
+mean(closure2$Online=="Yes", na.rm = TRUE)
+mean(closure2$Radio=="Yes", na.rm = TRUE)
+mean(closure2$TV=="Yes", na.rm = TRUE)
+
+
+closure3 <- closure %>% filter(`Income Group`=="Lower middle income"& `Reopening process started
+(Y/N/School year ended/Never closed)` != "Never closed")
+mean(closure3$Online=="Yes", na.rm = TRUE)
+mean(closure3$Radio=="Yes", na.rm = TRUE)
+mean(closure3$TV=="Yes", na.rm = TRUE)
+
+
+closure4 <- closure %>% filter(`Income Group`=="Upper middle income"& `Reopening process started
+(Y/N/School year ended/Never closed)` != "Never closed")
+mean(closure4$Online=="Yes", na.rm = TRUE)
+mean(closure4$Radio=="Yes", na.rm = TRUE)
+mean(closure4$TV=="Yes", na.rm = TRUE)
+
+income <-
+  factor(
+    c(
+      "Low income",
+      "Lower middle income",
+      "Upper middle income",
+      "High income"
+    ),
+    levels = c(
+      "Low income",
+      "Lower middle income",
+      "Upper middle income",
+      "High income"
+    )
+  )
+online <- c(mean(closure1$Online=="Yes", na.rm = TRUE), 
+            mean(closure3$Online=="Yes", na.rm = TRUE), 
+            mean(closure4$Online=="Yes", na.rm = TRUE),
+            mean(closure2$Online=="Yes" , na.rm = TRUE)) * 100
+radio <- c(mean(closure1$Radio=="Yes", na.rm = TRUE),
+           mean(closure3$Radio=="Yes", na.rm = TRUE),
+           mean(closure4$Radio=="Yes", na.rm = TRUE),
+           mean(closure2$Radio=="Yes" , na.rm = TRUE)) * 100
+tv <- c(mean(closure1$TV=="Yes", na.rm = TRUE),
+        mean(closure3$TV=="Yes", na.rm = TRUE),
+        mean(closure4$TV=="Yes", na.rm = TRUE),
+        mean(closure2$TV=="Yes" , na.rm = TRUE)) *100
+distancelearning <- data.frame(income, online, radio, tv)
+
+fig <- plot_ly(
+  distancelearning,
+  x =  ~ income,
+  y =  ~ online,
+  type = 'bar',
+  name = "Online",
+  marker = list(color = "#5778A4")
+)
+fig <- fig %>% add_trace(y =  ~ radio,
+                         name = "Radio",
+                         marker = list(color = "#D1615D"))
+fig <- fig %>% add_trace(y =  ~ tv,
+                         name = "TV",
+                         marker = list(color = "#E7CA60"))
+fig <-
+  fig %>% layout(
+    title = "Distance Learning Methods among Countries in Different Income Groups",
+    yaxis = list(title = "Percentage"),
+    xaxis = list(title = "")
+  )
+fig
+```
+
+test on difference in average closure weeks
+```{r}
+y <- data$`Total weeks FULLY CLOSED (excluding academic breaks)`
+x <- data$`Income Group`
+model1 <- lm(y~x,data=data)
+summary(model1)
+plot(model1)
+plot(y~x)
+
+m1 <- aov(data=data, y~x)
+summary(m1)
+
+res1.1 <- m1$residuals
+par(mfrow=c(2,2))
+qqnorm(res1.1); qqline(res1.1)
+plot(m1$fitted.values, res1.1, ylab = "Fitted values", xlab = "Residuals")
+
+PostHocTest(m1, method = "hsd", conf.level = 0.90) 
+```
+
+test on learning method use rate
+```{r}
+RadioUse <-
+  c(
+    sum(closure1$Radio == "Yes" , na.rm = TRUE),
+    sum(closure2$Radio == "Yes" , na.rm = TRUE),
+    sum(closure3$Radio == "Yes" , na.rm = TRUE),
+    sum(closure4$Radio == "Yes" , na.rm = TRUE)
+  )
+Country <-
+  c(sum(!is.na(closure1$Online)), sum(!is.na(closure2$Online)),
+    sum(!is.na(closure3$Online)), sum(!is.na(closure4$Online)))
+OnlineUse <-
+  c(
+    sum(closure1$Online == "Yes" , na.rm = TRUE),
+    sum(closure2$Online == "Yes" , na.rm = TRUE),
+    sum(closure3$Online == "Yes" , na.rm = TRUE),
+    sum(closure4$Online == "Yes" , na.rm = TRUE)
+  )
+TVUse <-
+  c(
+    sum(closure1$TV == "Yes" , na.rm = TRUE),
+    sum(closure2$TV == "Yes" , na.rm = TRUE),
+    sum(closure3$TV == "Yes" , na.rm = TRUE),
+    sum(closure4$TV == "Yes" , na.rm = TRUE)
+  )
+
+pairwise.prop.test(RadioUse, Country)
+pairwise.prop.test(OnlineUse, Country)
+pairwise.prop.test(TVUse, Country)
+```
